@@ -2,16 +2,23 @@
 
 use axum::extract::{Path, Query};
 use axum::response::{Html, IntoResponse};
-use axum::routing::get;
+use axum::routing::{get, get_service};
 use axum::Router;
 use serde::Deserialize;
 use anyhow::Result;
 use tokio::net::TcpListener;
+use tower_http::services::ServeDir;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let routes_all = Router::new()
-		.merge(routes_hello());
+		.merge(routes_hello())
+		.fallback_service(get_service(ServeDir::new("./src")).handle_error(|err| async move {
+				(
+					axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+					format!("Unhandled internal error: {}", err),
+				)
+        }));
 
 	// region:    --- Start Server
 	let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
