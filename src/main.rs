@@ -1,18 +1,29 @@
 #[allow(unused)]
 
+use crate::web::routes_login::routes;
+
+
+pub use self::error::{Error, Result};
 use axum::extract::{Path, Query};
-use axum::response::{Html, IntoResponse};
+use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, get_service};
-use axum::Router;
+use axum::{middleware, Router};
 use serde::Deserialize;
-use anyhow::Result;
 use tokio::net::TcpListener;
+use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
+
+mod error;
+mod web;
+mod model;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let routes_all = Router::new()
 		.merge(routes_hello())
+		.merge(routes())
+		.layer(middleware::map_response(main_response_mapper))
+		.layer(CookieManagerLayer::new())
 		.fallback_service(get_service(ServeDir::new("./src")).handle_error(|err| async move {
 				(
 					axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -31,6 +42,11 @@ async fn main() -> Result<()> {
 	Ok(())
 }
 
+async fn main_response_mapper(res: Response) -> Response {
+	println!("--> {:<12} - main responce", "RES_MAPPER");
+
+	res
+}
 
 fn routes_hello() -> Router {
 	Router::new()
