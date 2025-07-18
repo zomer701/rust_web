@@ -1,7 +1,7 @@
 #[allow(unused)]
 
+use crate::model::model::ModelController;
 use crate::web::routes_login::routes;
-
 
 pub use self::error::{Error, Result};
 use axum::extract::{Path, Query};
@@ -13,18 +13,26 @@ use tokio::net::TcpListener;
 use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
 
+mod ctx;
 mod error;
 mod web;
 mod model;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let routes_all = Router::new()
+	let mc = ModelController::new().await?;
+	let routes_apis = web::routes_tickets::routes(mc.clone())
+		.route_layer(middleware::from_fn(web::mw_auth::mw_require_auth));
+
+	let routes_all = Router::new()
 		.merge(routes_hello())
 		.merge(routes())
+		.nest("/api", routes_apis)
 		.layer(middleware::map_response(main_response_mapper))
+		.layer(middleware::from_fn_with_state(mc.clone(), web::mw_auth::mw_ctx_resolver))
 		.layer(CookieManagerLayer::new())
-		.fallback_service(get_service(ServeDir::new("./src")).handle_error(|err| async move {
+		.fallback_service(get_service(ServeDir::new("./src"))
+		.handle_error(|err| async move {
 				(
 					axum::http::StatusCode::INTERNAL_SERVER_ERROR,
 					format!("Unhandled internal error: {}", err),
