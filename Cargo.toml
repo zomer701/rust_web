@@ -19,5 +19,6 @@ strum_macros = "0.27.1"
 uuid = {version = "1", features = ["v4","fast-rng",]}
 anyhow = "1"
 futures = "0.3.31"
+chrono = "0.4.41"
 [dev-dependencies]
 httpc-test = "0.1.1"
