@@ -25,14 +25,22 @@ mod model;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+
+	tracing_subscriber::fmt()
+		.without_time()
+		.with_target(false)
+		.with_env_filter(EnvFilter::from_default_env())
+		.init();
+
 	let mc = ModelController::new().await?;
-	let routes_apis = web::routes_tickets::routes(mc.clone())
-		.route_layer(middleware::from_fn(web::mw_auth::mw_require_auth));
+
+	// let routes_apis = web::routes_tickets::routes(mc.clone())
+	// 	.route_layer(middleware::from_fn(web::mw_auth::mw_require_auth));
 
 	let routes_all = Router::new()
 		.merge(routes_hello())
 		.merge(routes())
-		.nest("/api", routes_apis)
+		//.nest("/api", routes_apis)
 		.layer(middleware::from_fn(capture_request_data))
 		.layer(middleware::map_response(main_response_mapper))
 		.layer(middleware::from_fn_with_state(mc.clone(), web::mw_auth::mw_ctx_resolver))
@@ -47,7 +55,8 @@ async fn main() -> Result<()> {
 
 	// region:    --- Start Server
 	let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
-	println!("->> LISTENING on {:?}\n", listener.local_addr());
+	
+	info!("->> LISTENING on {:?}\n", listener.local_addr());
 	axum::serve(listener, routes_all.into_make_service())
 		.await
 		.unwrap();
@@ -57,7 +66,7 @@ async fn main() -> Result<()> {
 }
 
 async fn main_response_mapper(res: Response) -> Response {
-	println!("--> {:<12} - main responce", "RES_MAPPER");
+	info!("->> {:<12} - main responce", "RES_MAPPER");
 
 	 let default_request_data = RequestData::default();
 	 let request_data = res.extensions().get::<RequestData>().unwrap_or(&default_request_data);
@@ -80,13 +89,13 @@ async fn main_response_mapper(res: Response) -> Response {
 					"request_uuid": uuid.to_string()
 				}
 			});
-			print!("--> {:<12} - main error response", "RES_MAPPER");
-			println!(" - {:#?}", client_error_body);
+			info!("->> {:<12} - main error response", "RES_MAPPER");
+			info!("->> {:#?}", client_error_body);
 
 			(*status, Json(client_error_body)).into_response()
 		});
 
-	print!("--> {:<12} - server_error response", "RES_MAPPER");
+	info!("->> {:<12} - server_error response", "RES_MAPPER");
 	let client_error = client_status_error.unzip().1;
 	logs::log_request(
 		uuid,
@@ -101,6 +110,8 @@ async fn main_response_mapper(res: Response) -> Response {
 }
 
 use axum::body::Body;
+use tracing::info;
+use tracing_subscriber::EnvFilter;
 
 async fn capture_request_data(
 	mut request: Request<Body>,
@@ -111,7 +122,7 @@ async fn capture_request_data(
 	let uri = request.uri().clone();
 	let ctx = request.extensions().get::<Ctx>().cloned(); // Get from previous middleware
 	if ctx.is_none() {
-		println!("->> {:<12} - No Ctx found in request extensions", "MW_CAPTURE");
+		info!("->> {:<12} - No Ctx found in request extensions", "MW_CAPTURE");
 	}
 	// Store values in response extensions for map_response
 	request.extensions_mut().insert(RequestData { method, uri, ctx });
@@ -132,7 +143,7 @@ struct HelloParams {
 
 // e.g., `/hello?name=Jen`
 async fn handler_hello(Query(params): Query<HelloParams>) -> impl IntoResponse {
-	println!("->> {:<12} - handler_hello - {params:?}", "HANDLER");
+	info!("->> {:<12} - handler_hello - {params:?}", "HANDLER");
 
 	let name = params.name.as_deref().unwrap_or("World!");
 	Html(format!("Hello <strong>{name}</strong>"))
@@ -140,7 +151,7 @@ async fn handler_hello(Query(params): Query<HelloParams>) -> impl IntoResponse {
 
 // e.g., `/hello2/Mike`
 async fn handler_hello2(Path(name): Path<String>) -> impl IntoResponse {
-	println!("->> {:<12} - handler_hello2 - {name:?}", "HANDLER");
+	info!("->> {:<12} - handler_hello2 - {name:?}", "HANDLER");
 
 	Html(format!("Hello2 <strong>{name}</strong>"))
 }

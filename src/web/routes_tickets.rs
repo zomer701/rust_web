@@ -1,5 +1,5 @@
 use axum::{extract::{FromRef, Path, State}, routing::{delete, post}, Json, Router};
-
+use tracing::debug;
 use crate::{ctx::Ctx, model::model::{ModelController, Ticket, TicketForCreate}, Result};
 
 #[derive(Clone, FromRef)]
@@ -22,7 +22,7 @@ async fn create_ticket(
     Json(ticket_fc): Json<TicketForCreate>,
 ) -> Result<Json<Ticket>> {
 
-    println!("->> {:<12} - create_ticket", "HANDLER");
+    debug!("->> {:<12} - create_ticket", "HANDLER");
 
     let ticket = mc.create_ticket(ctx, ticket_fc).await?;
 
@@ -34,7 +34,7 @@ async fn list_tickets(
     ctx: Ctx,
 ) -> Result<Json<Vec<Ticket>>> {
 
-    println!("->> {:<12} - list_tickets", "HANDLER");
+    debug!("->> {:<12} - list_tickets", "HANDLER");
 
     let tickets = mc.list_tickets(ctx).await?;
 
@@ -47,7 +47,7 @@ async fn delete_ticket(
     Path(id): Path<u64>,
 ) -> Result<Json<Ticket>> {
 
-    println!("->> {:<12} - delete_ticket", "HANDLER");
+    debug!("->> {:<12} - delete_ticket", "HANDLER");
 
     let ticket = mc.delete_ticket(ctx, id).await?;
 

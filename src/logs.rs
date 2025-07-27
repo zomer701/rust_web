@@ -5,6 +5,7 @@ use serde_json::{Value};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 use chrono::Utc;
+use tracing::debug;
 
 pub async fn log_request(
 	uuid: Uuid,
@@ -27,8 +28,8 @@ pub async fn log_request(
 			.and_then(|mut v| v.get_mut("data").map(|v| v.take())),
 	};
 
-	println!("->> {:<12} - log_request", "LOGGER");
-	println!("{:#?}", log_line);
+	debug!("->> {:<12} - log_request", "LOGGER");
+	debug!("{:#?}", log_line);
 
 	// Here you would typically write the log_line to a file or logging system.
 	Ok(())

@@ -10,13 +10,14 @@ use axum::middleware::Next;
 use axum::response::Response;
 use lazy_regex::regex_captures;
 use tower_cookies::{Cookie, Cookies};
+use tracing::debug;
 
 pub async fn mw_require_auth(
 	ctx: Result<Ctx>,
 	req: Request<Body>,
 	next: Next,
 ) -> Result<Response> {
-	println!("->> {:<12} - mw_require_auth - {ctx:?}", "MIDDLEWARE");
+	debug!("->> {:<12} - mw_require_auth - {ctx:?}", "MIDDLEWARE");
 
 	ctx?;
 
@@ -29,7 +30,7 @@ pub async fn mw_ctx_resolver(
 	mut req: Request<Body>,
 	next: Next,
 ) -> Result<Response> {
-	println!("->> {:<12} - mw_ctx_resolver", "MIDDLEWARE");
+	debug!("->> {:<12} - mw_ctx_resolver", "MIDDLEWARE");
 
 	let auth_token = cookies.get(AUTH_TOKEN).map(|c| c.value().to_string());
 
@@ -63,7 +64,7 @@ impl<S: Send + Sync> FromRequestParts<S> for Ctx {
 	 type Rejection = Error;
 
 	 fn from_request_parts(parts: &mut Parts, _state: &S) -> impl Future<Output = Result<Self>> + Send {
-		println!("->> {:<12} - Ctx", "EXTRACTOR");
+		debug!("->> {:<12} - Ctx", "EXTRACTOR");
 
 		async move {
 			parts
