@@ -1,27 +1,30 @@
 #[allow(unused)]
 
-use crate::ctx::{Ctx, RequestData};
-use crate::model::model::ModelController;
-use crate::web::routes_login::routes;
-
-pub use self::error::{Error, Result};
-use axum::extract::{Path, Query};
-use axum::http::{Request};
-use axum::middleware::Next;
-use axum::response::{Html, IntoResponse, Response};
-use axum::routing::{get, get_service};
-use axum::{middleware, Json, Router};
-use serde::Deserialize;
-use serde_json::json;
-use tokio::net::TcpListener;
-use tower_cookies::CookieManagerLayer;
-use tower_http::services::ServeDir;
-
+mod config;
 mod ctx;
 mod error;
 mod logs;
 mod web;
 mod model;
+
+pub use self::error::{Error, Result};
+pub use config::config;
+
+use crate::ctx::{Ctx, RequestData};
+use crate::model::model::ModelController;
+use crate::web::{routes_login, routes_static};
+
+use axum::extract::{Path, Query};
+use axum::http::{Request};
+use axum::middleware::Next;
+use axum::response::{Html, IntoResponse, Response};
+use axum::routing::{get};
+use axum::{middleware, Json, Router};
+use serde::Deserialize;
+use serde_json::json;
+use tokio::net::TcpListener;
+use tower_cookies::CookieManagerLayer;
+
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -39,19 +42,13 @@ async fn main() -> Result<()> {
 
 	let routes_all = Router::new()
 		.merge(routes_hello())
-		.merge(routes())
+		.merge(routes_login::routes())
 		//.nest("/api", routes_apis)
 		.layer(middleware::from_fn(capture_request_data))
 		.layer(middleware::map_response(main_response_mapper))
 		.layer(middleware::from_fn_with_state(mc.clone(), web::mw_auth::mw_ctx_resolver))
 		.layer(CookieManagerLayer::new())
-		.fallback_service(get_service(ServeDir::new("./src"))
-		.handle_error(|err| async move {
-				(
-					axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-					format!("Unhandled internal error: {}", err),
-				)
-        }));
+		.fallback_service(routes_static::serve_dir());
 
 	// region:    --- Start Server
 	let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();

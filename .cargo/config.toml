@@ -1,3 +1,4 @@
 [env]
 
 RUST_LOG = "web_rust=debug"
+SERVICE_WEB_FOLDER = "src/web-folder"
